@@ -60,6 +60,59 @@ class TestRollingPanel(unittest.TestCase):
             tm.assert_panel_equal(result, expected.swapaxes(0, 1))
 
 
+    def test_adding_and_dropping_items(self):
+        items = range(5)
+        minor = range(10)
+
+        expected_items = range(5)
+        expected_minor = range(10)
+
+        window = 10
+
+        rp = RollingPanel(window, items, minor, cap_multiple=2)
+
+        dates = pd.date_range('2000-01-01', periods=30, tz='utc')
+
+        major_deque = deque()
+
+        frames = {}
+
+        for i in range(30):
+            frame = pd.DataFrame(np.random.randn(5, 10), index=items,
+                                 columns=minor)
+
+            if i > window:
+                # Old labels should start to get dropped
+                expected_minor = expected_minor[1:]
+                expected_items = expected_items[1:]
+
+
+            date = dates[i]
+
+            rp.add_frame(date, frame)
+
+            frames[date] = frame
+            major_deque.append(date)
+
+            if i >= window:
+                major_deque.popleft()
+
+            result = rp.get_current()
+            tm.assert_equal(result.minor_axis.values.sort(),
+                            expected_minor.sort())
+            tm.assert_equal(result.items.values.sort(),
+                            expected_items.sort())
+
+            # shift minor and items to trigger updating of underlying data
+            # structure
+            minor = minor[1:]
+            minor.append(minor[-1] + 1)
+            items = items[1:]
+            items.append(items[-1] + 1)
+
+            expected_minor.append(expected_minor[-1] + 1)
+            expected_items.append(expected_items[-1] + 1)
+
 def run_history_implementations(option='clever', n=500, change_fields=False, copy=False):
     items = range(15)
     minor = range(20)
