@@ -59,13 +59,12 @@ class TestRollingPanel(unittest.TestCase):
                                 major_axis=items, minor_axis=minor)
             tm.assert_panel_equal(result, expected.swapaxes(0, 1))
 
-
     def test_adding_and_dropping_items(self):
-        items = range(5)
-        minor = range(10)
+        items = list(range(5))
+        minor = list(range(10))
 
-        expected_items = range(5)
-        expected_minor = range(10)
+        expected_items = list(range(5))
+        expected_minor = list(range(10))
 
         window = 10
 
@@ -86,7 +85,6 @@ class TestRollingPanel(unittest.TestCase):
                 expected_minor = expected_minor[1:]
                 expected_items = expected_items[1:]
 
-
             date = dates[i]
 
             rp.add_frame(date, frame)
@@ -98,10 +96,12 @@ class TestRollingPanel(unittest.TestCase):
                 major_deque.popleft()
 
             result = rp.get_current()
-            tm.assert_equal(result.minor_axis.values.sort(),
-                            expected_minor.sort())
-            tm.assert_equal(result.items.values.sort(),
-                            expected_items.sort())
+            np.testing.assert_array_equal(sorted(result.minor_axis.values),
+                                          sorted(expected_minor))
+            np.testing.assert_array_equal(sorted(result.items.values),
+                                          sorted(expected_items))
+            tm.assert_frame_equal(frame.T,
+                                  result.ix[frame.index, -1, frame.columns])
 
             # shift minor and items to trigger updating of underlying data
             # structure
@@ -113,7 +113,9 @@ class TestRollingPanel(unittest.TestCase):
             expected_minor.append(expected_minor[-1] + 1)
             expected_items.append(expected_items[-1] + 1)
 
-def run_history_implementations(option='clever', n=500, change_fields=False, copy=False):
+
+def run_history_implementations(option='clever', n=500, change_fields=False,
+                                copy=False):
     items = range(15)
     minor = range(20)
     window = 100

@@ -59,26 +59,30 @@ class RollingPanel(object):
         return panel
 
     def _update_buffer(self, frame):
-        # Drop outdated, nan-filled minors (sids) and items (fields)
-        non_nan_cols = set(self.buffer.dropna(axis=1).minor_axis)
-        new_cols = set(frame.columns)
+        # Get current frame as we only need to care about the data that is in
+        # the active window
+        old_buffer = self.get_current()
+        nans = pd.isnull(old_buffer)
+
+        # Find minor_axes that have only nans
+        # Note that minor is axis 2
+        non_nan_cols = set(old_buffer.minor_axis[~np.all(nans, axis=(0, 1))])
+        # Determine new columns to be added
+        new_cols = set(frame.columns).difference(non_nan_cols)
+        # Update internal minor axis
         self.minor_axis = _ensure_index(new_cols.union(non_nan_cols))
 
-        non_nan_items = set(self.buffer.dropna(axis=1).items)
-        new_items = set(frame.index)
+        # Same for items (fields)
+        # Find items axes that have only nans
+        # Note that items is axis 0
+        non_nan_items = set(old_buffer.items[~np.all(nans, axis=(1, 2))])
+        new_items = set(frame.index).difference(non_nan_items)
         self.items = _ensure_index(new_items.union(non_nan_items))
 
-        new_buffer = self._create_buffer()
-        # Copy old values we want to keep
-        # .update() is pretty slow. Ideally we would be using
-        # new_buffer.loc[non_nan_items, :, non_nan_cols] =
-        # but this triggers a bug in Pandas 0.11. Update
-        # this when 0.12 is released.
-        # https://github.com/pydata/pandas/issues/3777
-        new_buffer.update(
-            self.buffer.loc[non_nan_items, :, non_nan_cols])
-
-        self.buffer = new_buffer
+        # Reindex buffer to update axes (automatically adds nans)
+        self.buffer = self.buffer.reindex(items=self.items,
+                                          major_axis=np.arange(self.cap),
+                                          minor_axis=self.minor_axis)
 
     def add_frame(self, tick, frame):
         """
