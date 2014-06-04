@@ -60,7 +60,7 @@ class TestRollingPanel(unittest.TestCase):
             tm.assert_panel_equal(result, expected.swapaxes(0, 1))
 
 
-def run_history_implementations(option='clever', n=500, copy=False):
+def run_history_implementations(option='clever', n=500, change_fields=False, copy=False):
     items = range(15)
     minor = range(20)
     window = 100
@@ -74,10 +74,11 @@ def run_history_implementations(option='clever', n=500, copy=False):
         major_deque = deque()
 
         for i in range(periods):
-            if len(minor) > 5:
-                minor = minor[:-1]
-            if len(items) > 5:
-                items = items[:-1]
+            if change_fields and (i % 5) == 0:
+                minor = minor[1:]
+                minor.append(minor[-1] + 1)
+                items = items[1:]
+                items.append(items[-1] + 1)
 
             dummy = pd.DataFrame(np.random.randn(len(items), len(minor)),
                                  index=items, columns=minor)
